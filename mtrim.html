@@ -1,0 +1,432 @@
+<html>
+
+<head>
+
+<script src='//code.jquery.com/jquery.min.js' charset='utf-8'></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="//cdn.jsdelivr.net/jquery.maskedinput/1.4.1/jquery.maskedinput.js"></script>
+
+
+
+<script>
+
+	var gjeldende_inn_punkt=0,gjeldende_ut_punkt=0;
+	var audio_delay = '0.0';
+	var current_file_fullpath='';
+	var current_path='';
+	var cmd_to_run='';
+
+	function update_fields() {
+     	
+     	var splitted = current_file_fullpath.split("\\");
+     	var built_path='', prename='';
+     	
+		for (var i = 0; i < splitted.length-1; i++) { built_path+=splitted[i] + '\\'; }
+     	
+     	current_path = built_path;
+		$("#inpath").val(built_path);
+		$("#outpath").val(built_path);
+		$("#prename").val(splitted[splitted.length-1].toUpperCase().split(".MP4")[0]);
+		
+
+		//video.src="file:///" + current_file_fullpath;
+		generate_exe_string();
+	}
+
+
+
+	function readfiles(files) {
+ 			
+ 		if (current_path=='') { alert('bruk bla igjennom en gang forst!'); }
+ 		else { current_file_fullpath = current_path + files[0].name; update_fields(); }
+ 		
+    	//document.getElementById('status').innerHTML = files[i].name
+    	//alert(files[i].mozFullPath);
+  		//}
+  	}
+
+	function formatTime(seconds) {
+    var mins = Math.floor(seconds/60),
+        secs = Math.floor(seconds) - (60*mins);
+    return '0:' + (mins < 10 ? '0' + mins : mins) + ':' + (secs < 10 ? '0' + secs : secs);
+	}
+	function to_seconds(strtime) {
+    	return tcStringToFrame(strtime)/25;
+	}
+
+	function tcStringToFrame(_tc)
+	{
+		var fps			= 25;
+		var tc 			= "00:00:00".substring(0, 6 - _tc.length) + _tc; // for a evt padde inn leading zeroes
+		//var frames_i 	= parseInt(tc.substring(tc.length-2, tc.length));
+		var seconds_i 	= parseInt(tc.substring(5, 7));
+		var minutes_i 	= parseInt(tc.substring(2, 4));
+		var hours_i  	= parseInt(tc.substring(0, 1));
+		//return Math.floor(frames_i);
+		return Math.round(fps * seconds_i + 60.0 * fps * minutes_i + 3600.0 * fps * hours_i);
+	}
+	function sett_audio_delay() {
+		audio_delay = $("#audio_delay").val();
+		generate_exe_string();
+	}
+
+	function regn_ut_dur(arg)
+	{
+		if (arg==99) { 
+			gjeldende_inn_punkt = tcStringToFrame( $('#tcin').val() ) / 25;
+			gjeldende_ut_punkt = tcStringToFrame( $('#tcut').val() ) / 25; 
+		}
+		
+		//var diff = parseInt(document.getElementById('tcut').value) - parseInt(document.getElementById('tcin').value)
+		var diff = gjeldende_ut_punkt - gjeldende_inn_punkt;
+		
+		$("#dur").val(formatTime(diff));
+		generate_exe_string();
+	}
+	function go() {
+		//	var cmd_to_run2="C:\\Program Files (x86)\\fmpeg32\bin\\"+cmd_to_run;
+	}
+
+	function generate_exe_string() {
+		var tcinn=formatTime(gjeldende_inn_punkt); var legal_tcin = tcinn.replace(/:/g,'');
+		var tcut=formatTime(gjeldende_ut_punkt); var legal_tcut = tcut.replace(/:/g,'');
+		var tcdur=document.getElementById('dur').value;
+		var utsti=document.getElementById('outpath').value;
+		var fornavn=document.getElementById('prename').value;
+
+		cmd_to_run = 'ffmpeg65 -itsoffset '+audio_delay+' -i  "'+current_file_fullpath+'" -y -c:v copy -ss 0'+tcinn+' -t 0'+tcdur+' -c:a copy -async 1 "'+utsti+'\\'+fornavn+'_'+legal_tcin+'-'+legal_tcut+'.mp4"';
+		
+		document.getElementById('status').innerHTML = cmd_to_run;
+
+		var cmd_filnavn = fornavn+'_'+legal_tcin+'-'+legal_tcut+'.cmd';
+		document.getElementById('aa').href = 'http://localhost/mtrim/generate_cmd.php?filename='+cmd_filnavn+'&filinnhold='+cmd_to_run;
+	
+		}
+
+	function sett_inn_ut(id)
+	{
+		//var objs = new Array(document.getElementById('tcin'), document.getElementById('tcut'));
+		var current_time = video.currentTime.toString().split('.')[0];
+
+		id == 0 ? gjeldende_inn_punkt=current_time : gjeldende_ut_punkt=current_time; 
+
+		$("#tcin, #tcut")[id].value = formatTime(current_time);
+		regn_ut_dur();
+		
+	}
+
+   $(document).ready(function(){
+        // check for the nefarious IE
+   
+            // capture the file input fields
+            var fileInput = $('input[type="file"]');
+            // add presentational <span> tags "underneath" all file input fields for styling
+            fileInput.after(
+                $(document.createElement('span')).addClass('file-underlay')
+            );
+            // bind onClick to get the file-path and update the style <div>
+            fileInput.click(function(){
+                // need to capture $(this) because setTimeout() is on the
+                // Window keyword 'this' changes context in it
+                var fileContext = $(this);
+                // capture the timer as well as set setTimeout()
+                // we use setTimeout() because IE pauses timers when a file dialog opens
+                // in this manner we give ourselves a "pseudo-onChange" handler
+                var ieBugTimeout = setTimeout(function(){
+                    // set vars
+                    var filePath     = fileContext.val(),
+                        fileUnderlay = fileContext.siblings('.file-underlay');
+                    // check for IE's lovely security speil
+                    if(filePath.match(/fakepath/)) {
+                        // update the file-path text using case-insensitive regex
+                        filePath = filePath.replace(/C:\\fakepath\\/i, '');
+                    }
+                    // update the text in the file-underlay <span>
+                    fileUnderlay.text(filePath);
+                    // clear the timer var
+                    clearTimeout(ieBugTimeout);
+                    current_file_fullpath = filePath;
+                    
+                    
+                    update_fields();
+      
+                }, 10);
+            });
+   
+     $("#tcin").mask("99:99:99");
+     $("#tcut").mask("99:99:99");
+     $("#audio_delay").val(audio_delay);
+
+  
+
+     var holder = document.getElementById('video');
+     holder.ondragover = function () { this.className = 'hover'; return false; };
+     holder.ondragend = function () { this.className = ''; return false; };
+     holder.ondragleave = function () { this.className = ''; return false; };
+     holder.ondrop = function (e) {
+       this.className = '';
+       e.preventDefault();
+       readfiles(e.dataTransfer.files);
+
+     }
+
+
+
+  
+
+    })
+
+
+</script>
+
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+<link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+
+<style>
+
+body { font-family:'Ubuntu'; color:black;
+   background: url('noisybg.jpg'); background-repeat: no-repeat;  
+   background-attachment:fixed;background-position:center; 
+  }
+
+#frame { margin:5%; background: rgba(244,244,244,.7); font-size:1.3em;}
+
+input, select {border:none;}
+input.input {
+    background: transparent;
+    border-bottom:thin solid #99b;
+    }
+input.input2 {
+    background: transparent; 
+    border-bottom:thin solid #99b;
+    }
+
+#dur{}
+
+#video{width:90%;position:relative; border: 10px dashed rgba(155,215,0,.9);
+    left:50px;top:00px;}
+#video.hover { border: 10px dashed #cc0 !important; }
+
+#log_list{position:relative;
+    left:200px;top:200px;}
+
+#inn_button {
+float:left;
+margin-left:-2.5em;
+margin-top:-20em;
+}
+#ut_button  {
+float:right;
+margin-right:-2.5em;
+margin-top:-20em;
+}
+
+.button { /*green gadient button*/
+      cursor: pointer;
+      font-size: 1.2em;
+      color: #ffffff;
+      padding: 10px 20px;
+      background: #333; /*for ie*/
+      background: -moz-linear-gradient(
+        top,
+        #333 0%,
+        #111);
+      background: -webkit-gradient(
+        linear, left top, left bottom, 
+        from(#111),
+        to(#333));
+      -moz-border-radius: 10px;
+      -webkit-border-radius: 10px;
+      border-radius: 7px;
+      border: 1px solid #444;
+      -moz-box-shadow:
+        0px 1px 3px rgba(000,000,000,0.5),
+        inset 0px 0px 2px rgba(255,255,255,1);
+      -webkit-box-shadow:
+        0px 1px 3px rgba(000,000,000,0.5),
+        inset 0px 0px 2px rgba(255,255,255,1);
+      box-shadow:
+        0px 1px 3px rgba(000,000,000,0.5),
+        inset 0px 0px 2px rgba(255,255,255,1);
+      text-shadow:
+        0px -1px 0px rgba(000,000,000,0.4),
+        0px 1px 0px rgba(255,255,255,0.4);
+      text-decoration: none;
+    }
+.button:hover {
+      background: #eee; /*for ie*/
+      background: -moz-linear-gradient(
+        top,
+        #eee 0%,
+        #fff);
+      color:#199;
+      border: 1px solid #199;
+      text-shadow:
+        0px -1px 0px rgba(000,000,000,0.4),
+        0px 1px 0px rgba(255,255,255,0.4);
+      background: -webkit-gradient(
+        linear, left top, left bottom, 
+        from(#eee),
+        to(#fff));
+      -moz-border-radius: 10px;
+    }
+.status {position:relative;padding:15px;margin:1em;display:block;
+    clear:right;background: rgba(222,222,222,0.2);color:#555;}    
+
+
+#log_list{display:none;}
+#holder {width:99%; height:500px; }
+
+#blaigjennom_snarvei{float:left;margin:2em;}
+
+#go{float:right;margin:2em;}}
+
+
+</style>
+
+
+</head>
+
+
+
+
+
+
+
+<body>
+
+<div id="frame" class="container">
+
+<section class="col-sm-12" style="margin-bottom:1em !important;">
+
+  <div class="form-group" style="margin-top:1em !important;">
+    <div class="col-sm-1"><label for="tcin" class="control-label">TC IN</label></div>
+      <div class="col-sm-2"><input class="input form-control" id="tcin" type="text" placeholder="00:00:00" onchange="regn_ut_dur(99);"></div>
+  </div>
+
+  <div class="form-group">
+    <div class="col-sm-1"><label for="tcut" class="control-label">TC UT</label></div>
+    <div class="col-sm-2">
+      <input class="input form-control" id="tcut" type="text" placeholder="00:00:00" onchange="regn_ut_dur(99);">
+    </div>
+  </div>
+
+  <div class="form-group" >
+    <label for="dur" class="col-sm-1 control-label">DUR</label>
+    <div class="col-sm-2">
+      <input class="input form-control" id="dur" type="text" placeholder="00:00:00" >
+    </div>
+  </div>
+
+</section>
+
+
+<section class="col-sm-12">
+
+</section>
+
+<video id="video" width="90%" autoplay controls>
+   <source src="Skybackground.mov_3k.mp4" type="video/mp4">
+   Your browser does not support the video tag.
+</video>
+
+<div class="" style="">
+  <button id="inn_button" class="button" onClick="sett_inn_ut(0);">SETT <br>INN</button>
+  <button id="ut_button" class="button" onClick="sett_inn_ut(1);">SETT <br>UT</button>
+</div>
+
+
+
+<section class="col-sm-12" style="margin-top:1em;">
+  <div class="form-group" style="margin-top:1em !important;">
+    <label for="audio_delay" class="col-sm-2 control-label">aDELAY</label>
+    <div class="col-sm-4">
+      <input class="input form-control" id="audio_delay" type="text" placeholder="0" diabled onchange="sett_audio_delay();">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="audio_delay" class="col-sm-2 control-label">FIL-FORNAVN</label>
+    <div class="col-sm-4">
+      <input class="input form-control" id="prename" type="text" placeholder="filfornavn" diabled onchange="generate_exe_string();">
+    </div>
+  </div>
+</section>
+
+
+<section class="col-sm-12">
+  <div class="form-group" style="margin-top:1em !important;">
+    <div class="col-sm-2">
+    <label for="inpath" class="control-label">INN-STI</label> <button style="" id="select_inpath" class="" onMouseDown="$('#iframe').attr('src' , '/dirselector?target_field=inpath');" data-toggle="modal" data-target="#datamodal">...</button></div>
+    <div class="col-sm-4">
+      <input class="input form-control" id="inpath" type="text" placeholder="" diabled onchange="generate_exe_string();">
+    </div>
+  </div>
+   <div class="form-group">
+    <div class="col-sm-2">
+    <label for="outpath" class="control-label">UT-STI</label> <button id="select_inpath" class="" onMouseDown="$('#iframe').attr('src' , '/dirselector?target_field=outpath');" data-toggle="modal" data-target="#datamodal">...</button></div>
+    <div class="col-sm-4">
+      <input class="input form-control" id="outpath" type="text" placeholder="" diabled onchange="generate_exe_string();">
+      
+    </div>
+  </div>
+</section>
+
+<div style="position:absolute;display:none;" ><input type="file" id="fil" onchange="">hidden</div>
+
+
+
+<div class="col-sm-12">
+<span id="status" class="status"></span>
+<a id="aa" href=""></a>
+</div>
+
+<div class="col-sm-12" style="margin-bottom:1em !important;">
+<button id="blaigjennom_snarvei" class="button" onClick="$('#fil').click();">VELG KLIPP</button>
+<button id="go" class="button" onClick="">GO!</button>
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+<!-- 
+MODAL WINDOW
+ -->
+
+<section class="modal fade" id="datamodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel2" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" style="" aria-hidden="true">&times;</button>
+        <h4 class="modal-title" id="myModalLabel2">&nbsp;</h4>
+      </div>
+      <div class="modal-body">
+        <iframe id="iframe" src="/" scrolling="no" height="00" frameborders="0" frameborder="0"></iframe>
+      </div>
+      <div class="modal-footer modal-confirmation-footer">
+        <button type="button" class="btn btn-success" data-dismiss="modal" id="button_dismiss_result">Lukk</button>
+      </div>
+    </div>
+  </div>
+ </section>
+
+
+
+
+
+
+
+
+</body>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+</html>

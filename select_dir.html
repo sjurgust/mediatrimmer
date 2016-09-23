@@ -1,0 +1,54 @@
+<html>
+<head>
+
+<script src='//code.jquery.com/jquery.min.js' charset='utf-8'></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+io = io.connect()
+
+
+function get_accessable(data) {
+	io.emit('get_accessable', data) 
+}
+function select_dir(data) {
+	var target_field = data.target_field || '#'
+	$('#'+target_field, window.parent.document).val(data.selected)
+	io.emit('set_globals', data)
+}
+function get_drives(data) {
+	io.emit('get_drives', data) 
+}
+io.on('fill_info_in_gui', function(data){ 
+	var target = data.target || ''
+	$(target).html(data.html)
+	$('#iframe', window.parent.document).height($(window).height() + 'px')
+	// alert($(window).height())
+})
+
+</script>
+
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+<link href="//fonts.googleapis.com/css?family=Ubuntu+Condensed" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+
+<style>
+	body{color:#59e;font-family:'Verdana';}
+	li{margin:.5em;padding:.5em;border-radius:0.2em;list-style:none;}
+	button{font-size:1em;letter-spacing:0.05em;color:#59e;padding:1em 3em;}
+	a{text-decoration:none !important;color:#59e;}
+	li:hover{background:#59e;color:white;}
+	.drives{color:#59e;border:1px #59e solid;}
+	.files_or_dirs{color:#d9e;border:1px #d9e solid;}
+</style>
+</head>
+<body>
+
+
+<div id="drives" style="width:95%;"></div>
+
+</body>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+</html>
